@@ -1,0 +1,546 @@
+/* Flutter의 전역 스타일과 동일한 역할 */
+/* 기본 스타일 및 커스텀 유틸리티 클래스 */
+
+/* 기본 폰트 설정 (Flutter의 Pretendard와 유사) */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
+
+@import "tailwindcss";
+
+/* Pik 컬러 시스템 (Flutter AppColors 기반) */
+:root {
+  /* 메인 그린 컬러 */
+  --color-main-green: #64AB85;
+  --color-deep-green: #3C7157;
+  --color-light-green: #D4EEE2;
+  --color-lighter-green: #EDF7F2;
+  
+  /* 그레이 컬러 */
+  --color-light-white: #F9FAFB;
+  --color-light-gray: #9CA3AF;
+  
+  /* 상태 컬러 */
+  --color-error-red: #EF4444;
+  --color-success-green: #10B881;
+  
+  /* 추가 컬러 */
+  --color-marine-blue: #2B5288;
+  --color-light-taube: #E5E0D9;
+  --color-rich-blue: #191265;
+  --color-pale-gray: #EBEBDF;
+  --color-musted-blush: #D1ADB6;
+  --color-light-periwinkle: #C5D1E8;
+}
+
+/* 기본 스타일 */
+* {
+  box-sizing: border-box;
+}
+
+body {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
+    sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* 커스텀 유틸리티 클래스 */
+@layer utilities {
+  /* 텍스트 줄 제한 */
+  .line-clamp-1 {
+    overflow: hidden;
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 1;
+  }
+  
+  .line-clamp-2 {
+    overflow: hidden;
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+  }
+  
+  .line-clamp-3 {
+    overflow: hidden;
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 3;
+  }
+
+  /* Pik 그라데이션 배경 */
+  .gradient-primary {
+    background: linear-gradient(135deg, var(--color-main-green) 0%, var(--color-deep-green) 100%);
+  }
+  
+  .gradient-secondary {
+    background: linear-gradient(135deg, var(--color-light-green) 0%, var(--color-main-green) 100%);
+  }
+  
+  .gradient-marine {
+    background: linear-gradient(135deg, var(--color-marine-blue) 0%, var(--color-rich-blue) 100%);
+  }
+  
+  .gradient-soft {
+    background: linear-gradient(135deg, var(--color-lighter-green) 0%, var(--color-light-white) 100%);
+  }
+
+  /* 그림자 효과 */
+  .shadow-soft {
+    box-shadow: 0 2px 15px -3px rgba(0, 0, 0, 0.07), 0 10px 20px -2px rgba(0, 0, 0, 0.04);
+  }
+  
+  .shadow-medium {
+    box-shadow: 0 4px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+  }
+  
+  .shadow-strong {
+    box-shadow: 0 10px 40px -10px rgba(0, 0, 0, 0.15), 0 2px 10px -2px rgba(0, 0, 0, 0.05);
+  }
+
+  /* 애니메이션 */
+  .animate-fade-in {
+    animation: fadeIn 0.5s ease-in-out;
+  }
+  
+  .animate-slide-up {
+    animation: slideUp 0.5s ease-out;
+  }
+  
+  .animate-bounce-in {
+    animation: bounceIn 0.6s ease-out;
+  }
+
+  /* 호버 효과 */
+  .hover-lift {
+    transition: transform 0.2s ease-in-out;
+  }
+  
+  .hover-lift:hover {
+    transform: translateY(-2px);
+  }
+
+  /* 스크롤바 스타일링 */
+  .scrollbar-thin {
+    scrollbar-width: thin;
+    scrollbar-color: #CBD5E0 #F7FAFC;
+  }
+  
+  .scrollbar-thin::-webkit-scrollbar {
+    width: 6px;
+  }
+  
+  .scrollbar-thin::-webkit-scrollbar-track {
+    background: #F7FAFC;
+  }
+  
+  .scrollbar-thin::-webkit-scrollbar-thumb {
+    background: #CBD5E0;
+    border-radius: 3px;
+  }
+  
+  .scrollbar-thin::-webkit-scrollbar-thumb:hover {
+    background: #A0AEC0;
+  }
+}
+
+/* 키프레임 애니메이션 */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes bounceIn {
+  0% {
+    opacity: 0;
+    transform: scale(0.3);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.05);
+  }
+  70% {
+    transform: scale(0.9);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* 반응형 유틸리티 */
+@media (max-width: 640px) {
+  .mobile-padding {
+    padding-left: 1rem;
+    padding-right: 1rem;
+  }
+  
+  .mobile-text-sm {
+    font-size: 0.875rem;
+  }
+  
+  .mobile-text-base {
+    font-size: 1rem;
+  }
+  
+  .mobile-hidden {
+    display: none;
+  }
+}
+
+@media (min-width: 641px) and (max-width: 1024px) {
+  .tablet-padding {
+    padding-left: 2rem;
+    padding-right: 2rem;
+  }
+  
+  .tablet-text-lg {
+    font-size: 1.125rem;
+  }
+  
+  .tablet-text-xl {
+    font-size: 1.25rem;
+  }
+}
+
+@media (min-width: 1025px) {
+  .desktop-padding {
+    padding-left: 3rem;
+    padding-right: 3rem;
+  }
+  
+  .desktop-text-2xl {
+    font-size: 1.5rem;
+  }
+  
+  .desktop-text-3xl {
+    font-size: 1.875rem;
+  }
+}
+
+/* 터치 디바이스 최적화 */
+@media (hover: none) and (pointer: coarse) {
+  .btn-primary,
+  .btn-secondary,
+  .btn-outline,
+  .btn-marine {
+    min-height: 3rem;
+    padding: 1rem 1.5rem;
+  }
+  
+  .navbar-nav-item {
+    min-height: 3rem;
+    padding: 0.75rem 1rem;
+  }
+}
+
+/* 반응형 컨테이너 유틸리티 */
+.container-responsive {
+  width: 100%;
+  max-width: 80rem; /* max-w-7xl */
+  margin: 0 auto;
+  padding: 0 1rem;
+}
+
+@media (min-width: 640px) {
+  .container-responsive {
+    padding: 0 1.5rem;
+  }
+}
+
+@media (min-width: 1024px) {
+  .container-responsive {
+    padding: 0 2rem;
+  }
+}
+
+/* 반응형 텍스트 크기 */
+.text-responsive-xs {
+  font-size: 0.75rem;
+}
+
+@media (min-width: 640px) {
+  .text-responsive-xs {
+    font-size: 0.875rem;
+  }
+}
+
+.text-responsive-sm {
+  font-size: 0.875rem;
+}
+
+@media (min-width: 640px) {
+  .text-responsive-sm {
+    font-size: 1rem;
+  }
+}
+
+.text-responsive-base {
+  font-size: 1rem;
+}
+
+@media (min-width: 640px) {
+  .text-responsive-base {
+    font-size: 1.125rem;
+  }
+}
+
+.text-responsive-lg {
+  font-size: 1.125rem;
+}
+
+@media (min-width: 640px) {
+  .text-responsive-lg {
+    font-size: 1.25rem;
+  }
+}
+
+@media (min-width: 1024px) {
+  .text-responsive-lg {
+    font-size: 1.5rem;
+  }
+}
+
+.text-responsive-xl {
+  font-size: 1.25rem;
+}
+
+@media (min-width: 640px) {
+  .text-responsive-xl {
+    font-size: 1.5rem;
+  }
+}
+
+@media (min-width: 1024px) {
+  .text-responsive-xl {
+    font-size: 1.875rem;
+  }
+}
+
+.text-responsive-2xl {
+  font-size: 1.5rem;
+}
+
+@media (min-width: 640px) {
+  .text-responsive-2xl {
+    font-size: 1.875rem;
+  }
+}
+
+@media (min-width: 1024px) {
+  .text-responsive-2xl {
+    font-size: 2.25rem;
+  }
+}
+
+.text-responsive-3xl {
+  font-size: 1.875rem;
+}
+
+@media (min-width: 640px) {
+  .text-responsive-3xl {
+    font-size: 2.25rem;
+  }
+}
+
+@media (min-width: 1024px) {
+  .text-responsive-3xl {
+    font-size: 3rem;
+  }
+}
+
+/* 반응형 간격 */
+.spacing-responsive-sm {
+  padding: 0.5rem;
+}
+
+@media (min-width: 640px) {
+  .spacing-responsive-sm {
+    padding: 0.75rem;
+  }
+}
+
+@media (min-width: 1024px) {
+  .spacing-responsive-sm {
+    padding: 1rem;
+  }
+}
+
+.spacing-responsive-md {
+  padding: 1rem;
+}
+
+@media (min-width: 640px) {
+  .spacing-responsive-md {
+    padding: 1.5rem;
+  }
+}
+
+@media (min-width: 1024px) {
+  .spacing-responsive-md {
+    padding: 2rem;
+  }
+}
+
+.spacing-responsive-lg {
+  padding: 1.5rem;
+}
+
+@media (min-width: 640px) {
+  .spacing-responsive-lg {
+    padding: 2rem;
+  }
+}
+
+@media (min-width: 1024px) {
+  .spacing-responsive-lg {
+    padding: 3rem;
+  }
+}
+
+/* 다크 모드 지원 (향후 확장용) */
+@media (prefers-color-scheme: dark) {
+  .dark-mode {
+    background-color: #1A202C;
+    color: #E2E8F0;
+  }
+}
+
+/* 접근성 개선 */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* 포커스 스타일 */
+.focus-visible:focus {
+  outline: 2px solid #3B82F6;
+  outline-offset: 2px;
+}
+
+/* Pik 버튼 스타일 */
+.btn-primary {
+  background-color: #64AB85;
+  color: white;
+  padding: 0.75rem 1.5rem;
+  border-radius: 0.5rem;
+  font-weight: 500;
+  transition: all 0.2s ease-in-out;
+  border: none;
+  cursor: pointer;
+  font-size: 0.875rem;
+  min-height: 2.75rem;
+}
+
+.btn-primary:hover {
+  background-color: #3C7157;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(100, 171, 133, 0.3);
+}
+
+@media (min-width: 640px) {
+  .btn-primary {
+    font-size: 1rem;
+    padding: 0.875rem 1.75rem;
+    min-height: 3rem;
+  }
+}
+
+@media (min-width: 1024px) {
+  .btn-primary {
+    font-size: 1rem;
+    padding: 1rem 2rem;
+    min-height: 3.25rem;
+  }
+}
+
+.btn-secondary {
+  background-color: #D4EEE2;
+  color: #3C7157;
+  padding: 0.75rem 1.5rem;
+  border-radius: 0.5rem;
+  font-weight: 500;
+  transition: all 0.2s ease-in-out;
+  border: none;
+  cursor: pointer;
+}
+
+.btn-secondary:hover {
+  background-color: #64AB85;
+  color: white;
+  transform: translateY(-1px);
+}
+
+.btn-outline {
+  background-color: transparent;
+  color: #64AB85;
+  padding: 0.75rem 1.5rem;
+  border-radius: 0.5rem;
+  font-weight: 500;
+  border: 2px solid #64AB85;
+  transition: all 0.2s ease-in-out;
+  cursor: pointer;
+  font-size: 0.875rem;
+  min-height: 2.75rem;
+}
+
+.btn-outline:hover {
+  background-color: #64AB85;
+  color: white;
+  transform: translateY(-1px);
+}
+
+@media (min-width: 640px) {
+  .btn-outline {
+    font-size: 1rem;
+    padding: 0.875rem 1.75rem;
+    min-height: 3rem;
+  }
+}
+
+@media (min-width: 1024px) {
+  .btn-outline {
+    font-size: 1rem;
+    padding: 1rem 2rem;
+    min-height: 3.25rem;
+  }
+}
+
+.btn-marine {
+  background-color: #2B5288;
+  color: white;
+  padding: 0.75rem 1.5rem;
+  border-radius: 0.5rem;
+  font-weight: 500;
+  transition: all 0.2s ease-in-out;
+  border: none;
+  cursor: pointer;
+}
+
+.btn-marine:hover {
+  background-color: #191265;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(43, 82, 136, 0.3);
+}
