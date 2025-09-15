@@ -9,20 +9,8 @@ import {
 import useAuthStore from "../stores/authStore";
 
 const SearchPage = () => {
-  const [searchQuery, setSearchQuery] = useState(() => {
-    // 컴포넌트 마운트 시 sessionStorage에서 검색어 복원
-    return sessionStorage.getItem("searchQuery") || "";
-  });
-  const [searchResults, setSearchResults] = useState(() => {
-    // 컴포넌트 마운트 시 sessionStorage에서 검색 결과 복원
-    try {
-      const savedResults = sessionStorage.getItem("searchResults");
-      return savedResults ? JSON.parse(savedResults) : [];
-    } catch (error) {
-      console.error("Failed to parse saved search results:", error);
-      return [];
-    }
-  });
+  const [searchQuery, setSearchQuery] = useState("");
+  const [searchResults, setSearchResults] = useState([]);
   const [recentSearches, setRecentSearches] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -42,18 +30,22 @@ const SearchPage = () => {
     }
   }, [isAuthenticated, user?.userId]);
 
-  // 컴포넌트 마운트 시 최근 검색 기록 로드
+  // 컴포넌트 마운트 시 sessionStorage 초기화 및 최근 검색 기록 로드
   useEffect(() => {
+    // 새로고침 시 검색창 내용 초기화
+    sessionStorage.removeItem("searchQuery");
+    sessionStorage.removeItem("searchResults");
+
     loadRecentSearches();
+
+    // 컴포넌트 언마운트 시 sessionStorage 초기화 (다른 페이지로 이동 시)
+    return () => {
+      sessionStorage.removeItem("searchQuery");
+      sessionStorage.removeItem("searchResults");
+    };
   }, [loadRecentSearches]);
 
-  // 컴포넌트 마운트 시 저장된 검색어가 있으면 검색 실행
-  useEffect(() => {
-    const savedQuery = sessionStorage.getItem("searchQuery");
-    if (savedQuery && savedQuery.trim()) {
-      handleSearch(savedQuery);
-    }
-  }, []); // 빈 의존성 배열로 마운트 시에만 실행
+  // 컴포넌트 마운트 시 저장된 검색어 실행 로직 제거 (새로고침 시 초기화)
 
   // 검색 실행
   const handleSearch = async (query) => {

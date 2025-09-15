@@ -1,7 +1,8 @@
 import React from "react";
 import { Link } from "react-router-dom";
+import LikeButton from "./LikeButton";
 
-const SearchResultCard = ({ location, onLocationClick }) => {
+const SearchResultCard = ({ location, onLocationClick, showCount = true }) => {
   const handleClick = () => {
     if (onLocationClick) {
       onLocationClick(location);
@@ -65,30 +66,16 @@ const SearchResultCard = ({ location, onLocationClick }) => {
           )}
         </div>
 
-        {/* 즐겨찾기 버튼 */}
+        {/* 좋아요 버튼 */}
         <div className="search-result-actions">
-          <button
-            className="search-result-favorite-btn"
-            onClick={(e) => {
-              e.stopPropagation();
-              // TODO: 즐겨찾기 기능 구현
-              console.log("Add to favorites:", location.title);
-            }}
-          >
-            <svg
-              className="w-5 h-5"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"
-              />
-            </svg>
-          </button>
+          <div onClick={(e) => e.stopPropagation()}>
+            <LikeButton
+              placeId={location._id}
+              placeName={location.title}
+              showCount={showCount}
+              size="small"
+            />
+          </div>
         </div>
       </div>
     </Link>

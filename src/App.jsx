@@ -7,6 +7,7 @@ import ErrorBoundary from "./components/ErrorBoundary";
 
 // Stores
 import useAuthStore from "./stores/authStore";
+import useLikeStore from "./stores/likeStore";
 
 // Pages
 import HomePage from "./pages/HomePage";
@@ -20,11 +21,20 @@ import LocationDetailPage from "./pages/LocationDetailPage";
 
 function App() {
   const { initialize } = useAuthStore();
+  const { loadLikedPlaces } = useLikeStore();
 
   // 앱 시작 시 인증 상태 초기화
   useEffect(() => {
     initialize();
   }, [initialize]);
+
+  // 인증 상태가 변경될 때마다 좋아요 목록 로드
+  useEffect(() => {
+    const { isAuthenticated } = useAuthStore.getState();
+    if (isAuthenticated) {
+      loadLikedPlaces();
+    }
+  }, [loadLikedPlaces]);
 
   return (
     <ErrorBoundary>
