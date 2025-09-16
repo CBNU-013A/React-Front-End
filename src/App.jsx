@@ -19,6 +19,14 @@ import LoginPage from "./pages/LoginPage";
 import SignupPage from "./pages/SignupPage";
 import LocationDetailPage from "./pages/LocationDetailPage";
 
+// Recommendation Pages
+import SetWithPage from "./pages/recommendation/SetWithPage";
+import SetThemePage from "./pages/recommendation/SetThemePage";
+import SetActivityPage from "./pages/recommendation/SetActivityPage";
+import SetSeasonPage from "./pages/recommendation/SetSeasonPage";
+import SetFeaturesPage from "./pages/recommendation/SetFeaturesPage";
+import ResultPage from "./pages/recommendation/ResultPage";
+
 function App() {
   const { initialize } = useAuthStore();
   const { loadLikedPlaces } = useLikeStore();
@@ -49,6 +57,20 @@ function App() {
             <Route path="/search" element={<SearchPage />} />
             <Route path="/favorites" element={<FavoritesPage />} />
             <Route path="/mypage" element={<MyPage />} />
+
+            {/* 추천 플로우 라우트들 */}
+            <Route path="/recommendation/with" element={<SetWithPage />} />
+            <Route path="/recommendation/theme" element={<SetThemePage />} />
+            <Route
+              path="/recommendation/activity"
+              element={<SetActivityPage />}
+            />
+            <Route path="/recommendation/season" element={<SetSeasonPage />} />
+            <Route
+              path="/recommendation/features"
+              element={<SetFeaturesPage />}
+            />
+            <Route path="/recommendation/result" element={<ResultPage />} />
 
             {/* 인증 페이지 라우트들 */}
             <Route path="/login" element={<LoginPage />} />

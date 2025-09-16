@@ -87,6 +87,7 @@ const MyPage = () => {
                   </button>
                   <Link
                     to="/login"
+                    state={{ from: { pathname: "/mypage" } }}
                     className="login-popup-login"
                     onClick={handleCloseLoginPopup}
                   >

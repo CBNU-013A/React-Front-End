@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import Logo from "../assets/Logo.svg";
 import useAuthStore from "../stores/authStore";
 
@@ -7,6 +7,7 @@ const NavigationBar = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
   const location = useLocation();
+  const navigate = useNavigate();
   const { isAuthenticated, user, logout } = useAuthStore();
 
   // 디버깅용 로그
@@ -21,6 +22,16 @@ const NavigationBar = () => {
 
   const isActive = (path) => {
     return location.pathname === path;
+  };
+
+  const handleRecommendationClick = (e) => {
+    e.preventDefault();
+    if (!isAuthenticated) {
+      navigate("/recommendations");
+    } else {
+      // 로그인된 경우 바로 추천 시작
+      navigate("/recommendation/with");
+    }
   };
 
   useEffect(() => {
@@ -50,17 +61,32 @@ const NavigationBar = () => {
 
           {/* 데스크톱 네비게이션 - 가운데 정렬 */}
           <div className="navbar-nav-center">
-            {navigationItems.map((item) => (
-              <Link
-                key={item.name}
-                to={item.path}
-                className={`navbar-nav-item ${
-                  isActive(item.path) ? "active" : ""
-                }`}
-              >
-                <span className="text-sm lg:text-base">{item.name}</span>
-              </Link>
-            ))}
+            {navigationItems.map((item) => {
+              if (item.name === "여행지 추천받기") {
+                return (
+                  <button
+                    key={item.name}
+                    onClick={handleRecommendationClick}
+                    className={`navbar-nav-item ${
+                      isActive(item.path) ? "active" : ""
+                    }`}
+                  >
+                    <span className="text-sm lg:text-base">{item.name}</span>
+                  </button>
+                );
+              }
+              return (
+                <Link
+                  key={item.name}
+                  to={item.path}
+                  className={`navbar-nav-item ${
+                    isActive(item.path) ? "active" : ""
+                  }`}
+                >
+                  <span className="text-sm lg:text-base">{item.name}</span>
+                </Link>
+              );
+            })}
           </div>
 
           {/* 인증 버튼 */}
@@ -85,7 +111,11 @@ const NavigationBar = () => {
             ) : (
               // 로그인되지 않은 상태
               <>
-                <Link to="/login" className="navbar-auth-btn navbar-login-btn">
+                <Link
+                  to="/login"
+                  state={{ from: { pathname: location.pathname } }}
+                  className="navbar-auth-btn navbar-login-btn"
+                >
                   <span className="text-sm lg:text-base">로그인</span>
                 </Link>
                 <Link
@@ -145,20 +175,38 @@ const NavigationBar = () => {
             }}
           >
             <div className="px-3 sm:px-4 py-2 space-y-1">
-              {navigationItems.map((item) => (
-                <Link
-                  key={item.name}
-                  to={item.path}
-                  className={`flex items-center px-3 sm:px-4 py-3 rounded-lg font-medium transition-colors ${
-                    isActive(item.path)
-                      ? "active"
-                      : "navbar-nav-item hover:bg-gray-50"
-                  }`}
-                  onClick={() => setIsMenuOpen(false)}
-                >
-                  <span className="text-sm sm:text-base">{item.name}</span>
-                </Link>
-              ))}
+              {navigationItems.map((item) => {
+                if (item.name === "여행지 추천받기") {
+                  return (
+                    <Link
+                      key={item.name}
+                      to="/recommendations"
+                      className={`flex items-center px-3 sm:px-4 py-3 rounded-lg font-medium transition-colors ${
+                        isActive(item.path)
+                          ? "active"
+                          : "navbar-nav-item hover:bg-gray-50"
+                      }`}
+                      onClick={() => setIsMenuOpen(false)}
+                    >
+                      <span className="text-sm sm:text-base">{item.name}</span>
+                    </Link>
+                  );
+                }
+                return (
+                  <Link
+                    key={item.name}
+                    to={item.path}
+                    className={`flex items-center px-3 sm:px-4 py-3 rounded-lg font-medium transition-colors ${
+                      isActive(item.path)
+                        ? "active"
+                        : "navbar-nav-item hover:bg-gray-50"
+                    }`}
+                    onClick={() => setIsMenuOpen(false)}
+                  >
+                    <span className="text-sm sm:text-base">{item.name}</span>
+                  </Link>
+                );
+              })}
 
               {/* 모바일 인증 버튼 */}
               <div className="pt-2 border-t border-gray-200 space-y-2">
@@ -187,6 +235,7 @@ const NavigationBar = () => {
                   <>
                     <Link
                       to="/login"
+                      state={{ from: { pathname: location.pathname } }}
                       className="w-full flex items-center justify-center px-3 sm:px-4 py-3 rounded-lg font-medium transition-colors navbar-auth-btn navbar-login-btn"
                       onClick={() => setIsMenuOpen(false)}
                     >

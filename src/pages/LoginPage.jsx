@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useLocation } from "react-router-dom";
 import NavigationBar from "../widgets/NavigationBar";
 import useAuthStore from "../stores/authStore";
 
@@ -10,13 +10,15 @@ const LoginPage = () => {
 
   const { login, loading, error, isAuthenticated, clearError } = useAuthStore();
   const navigate = useNavigate();
+  const location = useLocation();
 
-  // 이미 로그인된 경우 홈으로 리다이렉트
+  // 이미 로그인된 경우 이전 페이지 또는 홈으로 리다이렉트
   useEffect(() => {
     if (isAuthenticated) {
-      navigate("/");
+      const from = location.state?.from?.pathname || "/";
+      navigate(from, { replace: true });
     }
-  }, [isAuthenticated, navigate]);
+  }, [isAuthenticated, navigate, location.state]);
 
   // 에러 초기화
   useEffect(() => {
@@ -33,7 +35,8 @@ const LoginPage = () => {
     const result = await login(email, password);
 
     if (result.success) {
-      navigate("/");
+      const from = location.state?.from?.pathname || "/";
+      navigate(from, { replace: true });
     }
   };
 

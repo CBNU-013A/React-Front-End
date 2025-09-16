@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import NavigationBar from "../widgets/NavigationBar";
 import LikeButton from "../components/LikeButton";
+import ReviewSection from "../components/ReviewSection";
 import { locationService } from "../services/locationService";
 import useAuthStore from "../stores/authStore";
 import useLikeStore from "../stores/likeStore";
@@ -237,20 +238,20 @@ const LocationDetailPage = () => {
                 분석
               </button>
               <button
-                onClick={() => setActiveTab("info")}
-                className={`location-detail-tab ${
-                  activeTab === "info" ? "active" : ""
-                }`}
-              >
-                상세정보
-              </button>
-              <button
                 onClick={() => setActiveTab("reviews")}
                 className={`location-detail-tab ${
                   activeTab === "reviews" ? "active" : ""
                 }`}
               >
                 리뷰
+              </button>
+              <button
+                onClick={() => setActiveTab("info")}
+                className={`location-detail-tab ${
+                  activeTab === "info" ? "active" : ""
+                }`}
+              >
+                상세정보
               </button>
             </div>
 
@@ -579,11 +580,11 @@ const LocationDetailPage = () => {
               )}
 
               {activeTab === "reviews" && (
-                <div className="location-detail-reviews">
-                  <h3 className="location-detail-content-title">리뷰</h3>
-                  <div className="location-detail-no-content">
-                    <p>리뷰 기능은 준비 중입니다.</p>
-                  </div>
+                <div className="location-detail-reviews-tab">
+                  <ReviewSection
+                    locationId={location._id}
+                    locationName={location.title}
+                  />
                 </div>
               )}
             </div>
