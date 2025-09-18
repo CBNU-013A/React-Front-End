@@ -130,7 +130,47 @@ class AuthService {
       return response.status === 200;
     } catch (error) {
       console.error("토큰 검증 실패:", error);
+      // 네트워크 에러인 경우 토큰을 유효하다고 간주 (오프라인 모드)
+      if (
+        error.message.includes("Failed to fetch") ||
+        error.message.includes("NetworkError") ||
+        error.message.includes("fetch")
+      ) {
+        console.log("네트워크 에러로 인한 토큰 검증 실패, 토큰 유효성 유지");
+        return true;
+      }
       return false;
+    }
+  }
+
+  /**
+   * 토큰 자동 갱신
+   * @param {string} token - 현재 토큰
+   * @returns {Promise<{success: boolean, newToken?: string}>}
+   */
+  async refreshToken(token) {
+    try {
+      const response = await fetch(`${BASE_URL}/api/refresh-token`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+      });
+
+      if (response.status === 200) {
+        const data = await response.json();
+        const newToken = data.token;
+
+        // 새 토큰으로 로컬 스토리지 업데이트
+        localStorage.setItem("token", newToken);
+
+        return { success: true, newToken };
+      }
+      return { success: false };
+    } catch (error) {
+      console.error("토큰 갱신 실패:", error);
+      return { success: false };
     }
   }
 
@@ -149,20 +189,69 @@ class AuthService {
    * @returns {Object|null}
    */
   getCurrentUser() {
+    console.log("🔍 getCurrentUser 호출됨");
+
+    // zustand persist에서 저장된 데이터 확인
+    const authData = localStorage.getItem("auth-storage");
+    console.log("📦 auth-storage 데이터:", authData ? "존재함" : "없음");
+
+    if (authData) {
+      try {
+        const parsed = JSON.parse(authData);
+        const state = parsed.state;
+        console.log("📋 파싱된 상태:", {
+          hasState: !!state,
+          hasUser: !!(state && state.user),
+          hasToken: !!(state && state.token),
+          user: state?.user,
+        });
+
+        if (state && state.user && state.token) {
+          const user = {
+            _id: state.user._id,
+            token: state.token,
+            userId: state.user._id,
+            userName: state.user.userName || state.user.name,
+            userEmail: state.user.userEmail || state.user.email,
+            name: state.user.userName || state.user.name,
+            email: state.user.userEmail || state.user.email,
+          };
+          console.log("✅ zustand에서 사용자 정보 반환:", user);
+          return user;
+        }
+      } catch (error) {
+        console.error("❌ auth-storage 파싱 오류:", error);
+      }
+    }
+
+    // 기존 방식으로 fallback
     const token = localStorage.getItem("token");
     const userId = localStorage.getItem("userId");
     const userName = localStorage.getItem("userName");
     const userEmail = localStorage.getItem("userEmail");
 
+    console.log("🔄 기존 방식으로 fallback:", {
+      hasToken: !!token,
+      hasUserId: !!userId,
+      hasUserName: !!userName,
+      hasUserEmail: !!userEmail,
+    });
+
     if (token && userId) {
-      return {
+      const user = {
+        _id: userId,
         token,
         userId,
         userName,
         userEmail,
+        name: userName,
+        email: userEmail,
       };
+      console.log("✅ 기존 방식에서 사용자 정보 반환:", user);
+      return user;
     }
 
+    console.log("❌ 사용자 정보 없음");
     return null;
   }
 
@@ -173,6 +262,34 @@ class AuthService {
   isAuthenticated() {
     const token = localStorage.getItem("token");
     return !!token;
+  }
+
+  /**
+   * 회원탈퇴
+   * @param {string} token - JWT 토큰
+   * @returns {Promise<{success: boolean, error?: string}>}
+   */
+  async deleteAccount(token) {
+    try {
+      const response = await fetch(`${BASE_URL}/api/user/delete`, {
+        method: "DELETE",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        return { success: true };
+      } else {
+        return { success: false, error: data.message || "회원탈퇴 실패" };
+      }
+    } catch (error) {
+      console.error("회원탈퇴 오류:", error);
+      return { success: false, error: "네트워크 오류가 발생했습니다." };
+    }
   }
 }
 

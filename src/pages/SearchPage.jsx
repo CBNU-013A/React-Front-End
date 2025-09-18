@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useCallback } from "react";
-import NavigationBar from "../widgets/NavigationBar";
 import SearchResultCard from "../components/SearchResultCard";
 import RecentSearchList from "../components/RecentSearchList";
 import {
@@ -162,10 +161,8 @@ const SearchPage = () => {
   };
 
   return (
-    <div className="min-h-screen" style={{ backgroundColor: "#F5F5F5" }}>
-      <NavigationBar />
-
-      <main style={{ paddingTop: "5rem" }}>
+    <div className="min-h-screen" style={{ backgroundColor: "white" }}>
+      <main>
         <div className="container mx-auto px-4 py-8 max-w-full">
           {/* 검색 입력 */}
           <div className="search-input-container">

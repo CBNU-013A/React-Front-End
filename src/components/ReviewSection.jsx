@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useCallback } from "react";
 import useAuthStore from "../stores/authStore";
 import reviewService from "../services/reviewService";
-import sentimentService from "../services/sentimentService";
 
 const ReviewSection = ({ locationId, locationName }) => {
   const { user, token, isAuthenticated } = useAuthStore();
@@ -27,99 +26,48 @@ const ReviewSection = ({ locationId, locationName }) => {
   const [sentimentResult, setSentimentResult] = useState({});
   const [isAnalyzing, setIsAnalyzing] = useState(false);
 
-  // 리뷰 데이터 로드
+  // 리뷰 데이터 로드 (리팩토링: getSplitReviewsByLocation 사용)
   const loadReviews = useCallback(async () => {
     try {
-      console.log("=== 리뷰 로드 시작 ===");
-      console.log("locationId:", locationId);
-      console.log("token:", token ? "있음" : "없음");
-      console.log("isAuthenticated:", isAuthenticated);
-      console.log("user:", user);
-
-      // userReview 초기화
       setUserReview(null);
       setSentimentResult({});
-
       setLoading(true);
 
-      const allReviews = await reviewService.getReviewsByLocation(
+      // 새로운 API 사용: 내 리뷰와 다른 리뷰를 한 번에 받아옴
+      const { mine, others } = await reviewService.getSplitReviewsByLocation(
         locationId,
-        token || null
+        token || null,
+        user?._id || null
       );
-      console.log("불러온 리뷰들:", allReviews);
-      setReviews(allReviews);
 
-      // 로그인한 사용자의 리뷰 확인 - 사용자별 리뷰 API 사용
-      if (isAuthenticated && user && user._id && token) {
-        console.log("사용자별 리뷰 조회 중...");
-        console.log("사용자 ID:", user._id);
-
-        const userReviews = await reviewService.getReviewsByUser(
-          token,
-          user._id
-        );
-        console.log("사용자의 모든 리뷰:", userReviews);
-
-        // 현재 장소의 리뷰만 필터링
-        console.log("현재 장소 ID:", locationId);
-        console.log(
-          "사용자 리뷰들의 locationId들:",
-          userReviews.map((r) => r.locationId)
-        );
-
-        const currentLocationReview = userReviews.find((review) => {
-          const isLocationMatch =
-            String(review.locationId) === String(locationId);
-          const isAuthorMatch = String(review.author) === String(user._id);
-          console.log(
-            `리뷰 ${review.id}: locationId=${review.locationId}, author=${review.author}, 현재장소=${locationId}, 현재사용자=${user._id}`
-          );
-          console.log(
-            `장소매치=${isLocationMatch}, 작성자매치=${isAuthorMatch}`
-          );
-          return isLocationMatch && isAuthorMatch;
+      setReviews(others || []);
+      if (mine) {
+        setUserReview({
+          content: mine.content,
+          reviewId: mine.id || mine._id,
+          sentimentAspects: mine.sentimentAspects || [],
         });
-
-        console.log("찾은 현재 장소 리뷰:", currentLocationReview);
-
-        if (currentLocationReview) {
-          setUserReview({
-            content: currentLocationReview.content,
-            reviewId: currentLocationReview.id,
-          });
-          setReviewContent(currentLocationReview.content);
-
-          // 감성 분석 수행
-          if (currentLocationReview.content) {
-            setIsAnalyzing(true);
-            try {
-              const sentiment = await sentimentService.analyzeSentiment(
-                currentLocationReview.content
-              );
-              console.log("감성 분석 결과:", sentiment);
-
-              if (sentiment && sentiment.sentiments) {
-                setSentimentResult(sentiment.sentiments);
-                console.log("주차 감성:", sentiment.sentiments["주차"]);
-                console.log("화장실 감성:", sentiment.sentiments["화장실"]);
-                console.log("시설관리 감성:", sentiment.sentiments["시설관리"]);
-                console.log("장소 감성:", sentiment.sentiments["장소"]);
-              }
-            } catch (error) {
-              console.error("감성 분석 오류:", error);
-            } finally {
-              setIsAnalyzing(false);
+        setReviewContent(mine.content);
+        // 감성 분석 결과가 있다면 변환하여 상태에 저장
+        if (mine.sentimentAspects && mine.sentimentAspects.length > 0) {
+          const sentimentMap = {};
+          mine.sentimentAspects.forEach((aspect) => {
+            if (aspect.sentiment) {
+              // 가장 높은 점수를 가진 감성을 찾기
+              const sentimentValues = aspect.sentiment;
+              let dominantSentiment = "none";
+              let maxCount = 0;
+              Object.entries(sentimentValues).forEach(([key, value]) => {
+                if (value > maxCount) {
+                  maxCount = value;
+                  dominantSentiment = key;
+                }
+              });
+              sentimentMap[aspect.aspect] = dominantSentiment;
             }
-          }
-        } else {
-          setUserReview(null);
-          setSentimentResult({});
+          });
+          setSentimentResult(sentimentMap);
         }
-      } else {
-        console.log(
-          "사용자 리뷰 확인 건너뜀 - 인증되지 않음 또는 사용자 정보 없음"
-        );
-        setUserReview(null);
       }
     } catch (error) {
       console.error("리뷰 로드 오류:", error);
@@ -249,34 +197,95 @@ const ReviewSection = ({ locationId, locationName }) => {
                       if (userReview.content) {
                         setIsAnalyzing(true);
                         try {
-                          const sentiment =
-                            await sentimentService.analyzeSentiment(
-                              userReview.content
-                            );
-                          console.log("감성 분석 결과:", sentiment);
+                          console.log("=== 감성 분석 요청 ===");
+                          console.log("분석할 리뷰 내용:", userReview.content);
+                          console.log("사용자 인증 상태:", isAuthenticated);
+                          console.log("사용자 정보:", user);
+                          console.log("토큰 존재 여부:", !!token);
+                          console.log("토큰 타입:", typeof token);
+                          console.log("토큰 길이:", token ? token.length : 0);
+                          console.log(
+                            "토큰 앞 20자:",
+                            token ? token.substring(0, 20) + "..." : "토큰 없음"
+                          );
 
-                          if (sentiment && sentiment.sentiments) {
-                            setSentimentResult(sentiment.sentiments);
-                            console.log(
-                              "주차 감성:",
-                              sentiment.sentiments["주차"]
+                          const sentiment =
+                            await reviewService.analyzeSentiment(
+                              userReview.content,
+                              token, // 토큰 전달
+                              locationId // 현재 장소 ID 전달
                             );
-                            console.log(
-                              "화장실 감성:",
-                              sentiment.sentiments["화장실"]
-                            );
-                            console.log(
-                              "시설관리 감성:",
-                              sentiment.sentiments["시설관리"]
-                            );
-                            console.log(
-                              "장소 감성:",
-                              sentiment.sentiments["장소"]
-                            );
+                          console.log("=== 감성 분석 결과 ===");
+                          console.log("전체 결과:", sentiment);
+                          console.log("결과 타입:", typeof sentiment);
+                          console.log(
+                            "결과 키들:",
+                            sentiment ? Object.keys(sentiment) : "결과 없음"
+                          );
+
+                          if (sentiment && sentiment.success) {
+                            // sentiments 데이터 확인
+                            const sentimentsData =
+                              sentiment.sentiments || sentiment.rawSentiments;
+
+                            if (
+                              sentimentsData &&
+                              Object.keys(sentimentsData).length > 0
+                            ) {
+                              console.log(
+                                "분석된 감성 데이터:",
+                                sentimentsData
+                              );
+                              console.log(
+                                "감성 데이터 키들:",
+                                Object.keys(sentimentsData)
+                              );
+                              console.log(
+                                "감성 데이터 값들:",
+                                Object.values(sentimentsData)
+                              );
+
+                              // UI에 분석 결과 표시
+                              setSentimentResult(sentimentsData);
+                              console.log("UI에 분석 결과 설정 완료");
+
+                              // 각 필드별 감성 분석 결과 출력
+                              Object.keys(sentimentsData).forEach((field) => {
+                                const fieldData = sentimentsData[field];
+                                console.log(`${field} 감성 분석:`, fieldData);
+                              });
+
+                              // 요약 정보 출력
+                              if (sentiment.summary) {
+                                console.log("분석 요약:", sentiment.summary);
+                              }
+                            } else {
+                              console.log(
+                                "분석 결과에 sentiments 데이터가 없습니다."
+                              );
+                              console.log("sentiment 객체:", sentiment);
+                            }
+                          } else {
+                            console.log("분석이 실패했습니다:", sentiment);
                           }
                         } catch (error) {
                           console.error("감성 분석 오류:", error);
-                          alert("감성 분석 중 오류가 발생했습니다.");
+
+                          // 에러 메시지 개선
+                          let errorMessage =
+                            "감성 분석 중 오류가 발생했습니다.";
+                          if (error.message && error.message.includes("401")) {
+                            errorMessage =
+                              "인증이 필요합니다. 다시 로그인해주세요.";
+                          } else if (
+                            error.message &&
+                            error.message.includes("토큰")
+                          ) {
+                            errorMessage =
+                              "토큰이 필요합니다. 다시 로그인해주세요.";
+                          }
+
+                          alert(errorMessage);
                         } finally {
                           setIsAnalyzing(false);
                         }
@@ -332,19 +341,50 @@ const ReviewSection = ({ locationId, locationName }) => {
                   </div>
                 )}
 
+                {/* 상세 감성 분석 결과 (API에서 받은 sentimentAspects) */}
+                {userReview &&
+                  userReview.sentimentAspects &&
+                  userReview.sentimentAspects.length > 0 && (
+                    <div className="sentiment-result">
+                      <h4 className="sentiment-title">상세 감성 분석 결과</h4>
+                      <div className="sentiment-aspects">
+                        {userReview.sentimentAspects.map((aspect, index) => (
+                          <div key={index} className="sentiment-aspect">
+                            <div className="aspect-header">
+                              <span className="aspect-name">
+                                분야 {index + 1}
+                              </span>
+                              {aspect.sentiment && (
+                                <div className="sentiment-scores">
+                                  {Object.entries(aspect.sentiment).map(
+                                    ([sentiment, count]) => (
+                                      <span
+                                        key={sentiment}
+                                        className={`sentiment-score sentiment-${sentiment}`}
+                                      >
+                                        {translateSentiment(sentiment)}: {count}
+                                      </span>
+                                    )
+                                  )}
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
                 {/* 감성 분석 로딩 */}
                 {isAnalyzing && (
                   <div className="sentiment-loading">감성 분석 중...</div>
                 )}
               </>
             ) : (
-              /* 리뷰가 없는 경우 */
-              <button
-                className="my-review-write-btn"
-                onClick={() => setShowReviewForm(true)}
-              >
-                리뷰 작성하기
-              </button>
+              /* 리뷰가 없는 경우 - 버튼 제거하고 텍스트만 표시 */
+              <p className="text-gray-600 text-sm">
+                아직 작성한 리뷰가 없습니다.
+              </p>
             )}
           </div>
         </div>
@@ -354,20 +394,28 @@ const ReviewSection = ({ locationId, locationName }) => {
         <h3 className="review-title">
           리뷰 (
           {(() => {
-            const otherReviews = reviews.filter((review) => {
-              if (!isAuthenticated || !user?._id) return true;
-              return String(review.author) !== String(user._id);
-            });
+            // 다른 리뷰들 (userReview가 아닌 것들)
+            const otherReviews = reviews;
             return otherReviews.length;
           })()}
           개)
         </h3>
-        {isAuthenticated && !userReview && (
+        {isAuthenticated && (
           <button
             className="review-write-btn"
             onClick={() => setShowReviewForm(!showReviewForm)}
           >
-            리뷰 작성
+            <svg
+              width="18"
+              height="18"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+            >
+              <path d="M12 20h9M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" />
+            </svg>
+            {userReview ? "리뷰 수정하기" : "리뷰 작성하기"}
           </button>
         )}
       </div>
@@ -426,32 +474,19 @@ const ReviewSection = ({ locationId, locationName }) => {
           console.log("전체 리뷰 목록:", reviews);
           console.log("현재 사용자 ID:", user?._id);
 
-          const otherReviews = reviews
-            .filter((review) => {
-              // 로그인하지 않은 경우 모든 리뷰 표시
-              if (!isAuthenticated || !user?._id) {
-                return true;
-              }
-              // 로그인한 경우 내가 쓴 리뷰는 제외
-              const isMyReview = String(review.author) === String(user._id);
-              return !isMyReview;
-            })
-            .sort((a, b) => {
-              // 최신순으로 정렬 (createdAt 또는 _id 기준)
-              const dateA = a.createdAt
-                ? new Date(a.createdAt)
-                : new Date(a._id);
-              const dateB = b.createdAt
-                ? new Date(b.createdAt)
-                : new Date(b._id);
+          // userReview는 이미 별도로 표시되므로, reviews 배열의 모든 리뷰를 표시
+          const otherReviews = reviews.sort((a, b) => {
+            // 최신순으로 정렬 (createdAt 또는 _id 기준)
+            const dateA = a.createdAt ? new Date(a.createdAt) : new Date(a._id);
+            const dateB = b.createdAt ? new Date(b.createdAt) : new Date(b._id);
 
-              // 날짜가 유효하지 않은 경우 _id로 정렬 (MongoDB ObjectId는 시간 정보 포함)
-              if (isNaN(dateA.getTime()) && isNaN(dateB.getTime())) {
-                return b._id.localeCompare(a._id);
-              }
+            // 날짜가 유효하지 않은 경우 _id로 정렬 (MongoDB ObjectId는 시간 정보 포함)
+            if (isNaN(dateA.getTime()) && isNaN(dateB.getTime())) {
+              return b._id.localeCompare(a._id);
+            }
 
-              return dateB - dateA;
-            });
+            return dateB - dateA;
+          });
 
           console.log("필터링된 다른 사용자 리뷰:", otherReviews);
 
@@ -468,62 +503,7 @@ const ReviewSection = ({ locationId, locationName }) => {
                     <span className="review-date">
                       {new Date(review.createdAt).toLocaleDateString("ko-KR")}
                     </span>
-                    {(() => {
-                      if (!isAuthenticated || !user?._id) {
-                        console.log("로그인하지 않음 또는 사용자 정보 없음");
-                        return false;
-                      }
-                      console.log("리뷰 작성자 비교:");
-                      console.log("review.author:", review.author);
-                      console.log("user._id:", user._id);
-                      const isMyReview =
-                        String(review.author) === String(user._id);
-                      console.log("같은가?", isMyReview);
-                      return isMyReview;
-                    })() && (
-                      <div className="review-edit-actions">
-                        <button
-                          className="review-edit-btn"
-                          onClick={() => {
-                            setReviewContent(review.content);
-                            setUserReview({
-                              content: review.content,
-                              reviewId: review._id,
-                            });
-                            setShowReviewForm(true);
-                          }}
-                        >
-                          수정
-                        </button>
-                        <button
-                          className="review-delete-btn-small"
-                          onClick={async () => {
-                            if (confirm("리뷰를 삭제하시겠습니까?")) {
-                              try {
-                                const success =
-                                  await reviewService.deleteReview(
-                                    review._id,
-                                    token
-                                  );
-                                if (success) {
-                                  setUserReview(null);
-                                  setReviewContent("");
-                                  setShowReviewForm(false);
-                                  await loadReviews();
-                                } else {
-                                  alert("리뷰 삭제에 실패했습니다.");
-                                }
-                              } catch (error) {
-                                console.error("리뷰 삭제 오류:", error);
-                                alert("리뷰 삭제 중 오류가 발생했습니다.");
-                              }
-                            }
-                          }}
-                        >
-                          삭제
-                        </button>
-                      </div>
-                    )}
+                    {/* 다른 사용자의 리뷰는 수정/삭제 불가 */}
                   </div>
                 </div>
                 <div className="review-content">{review.content}</div>

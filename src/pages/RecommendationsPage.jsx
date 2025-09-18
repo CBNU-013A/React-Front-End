@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate, Link } from "react-router-dom";
-import NavigationBar from "../widgets/NavigationBar";
 import useAuthStore from "../stores/authStore";
 
 const RecommendationsPage = () => {
@@ -11,8 +10,8 @@ const RecommendationsPage = () => {
   // 로그인 상태에 따라 팝업 표시/숨김 또는 바로 추천 시작
   useEffect(() => {
     if (isAuthenticated) {
-      // 로그인된 경우 바로 추천 시작
-      navigate("/recommendation/with");
+      // 로그인된 경우 도시 선택부터 시작
+      navigate("/recommendation/location");
     } else {
       // 로그인되지 않으면 팝업 표시
       setShowLoginPopup(true);
@@ -31,9 +30,7 @@ const RecommendationsPage = () => {
   };
 
   return (
-    <div className="min-h-screen" style={{ backgroundColor: "#F5F5F5" }}>
-      <NavigationBar />
-
+    <div className="min-h-screen" style={{ backgroundColor: "white" }}>
       {/* 로그인 팝업 */}
       {showLoginPopup && !isAuthenticated && (
         <div className="login-popup-overlay">
@@ -62,7 +59,7 @@ const RecommendationsPage = () => {
             <div className="login-popup-content">
               <div className="text-4xl mb-4">🔒</div>
               <p className="login-popup-message">
-                마이페이지 기능을 사용하려면 로그인해주세요.
+                여행지 추천 기능을 사용하려면 로그인해주세요.
               </p>
             </div>
             <div className="login-popup-actions">

@@ -122,9 +122,7 @@ const LocationSlider = ({ onBackgroundColorChange }) => {
           <div className="slider-text-content">
             {/* 카테고리 라벨 */}
             <div className="slider-category">
-              <span className="category-label">
-                여기에 간략한 소개를 넣겠삼{" "}
-              </span>
+              <span className="category-label">Pik Pick ! </span>
             </div>
 
             {/* 메인 제목 */}

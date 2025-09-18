@@ -3,6 +3,17 @@
   margin: 0;
   padding: 0;
   min-height: 100vh;
+  background-color: white;
+}
+
+body {
+  background-color: white;
+  margin: 0 auto;
+  padding: 0;
+}
+
+html {
+  background-color: white;
 }
 
 .logo {

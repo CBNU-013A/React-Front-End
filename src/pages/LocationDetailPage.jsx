@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
-import NavigationBar from "../widgets/NavigationBar";
 import LikeButton from "../components/LikeButton";
 import ReviewSection from "../components/ReviewSection";
 import { locationService } from "../services/locationService";
@@ -14,6 +13,9 @@ const LocationDetailPage = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [activeTab, setActiveTab] = useState("overview");
+  const [sentimentFieldsData, setSentimentFieldsData] = useState(null);
+  const [sentimentFieldsLoading, setSentimentFieldsLoading] = useState(false);
+  const [sentimentFieldsError, setSentimentFieldsError] = useState(null);
 
   const { isAuthenticated } = useAuthStore();
   const { loadLikedPlaces } = useLikeStore();
@@ -26,7 +28,8 @@ const LocationDetailPage = () => {
         setLocation(locationData);
       } catch (error) {
         console.error("Failed to fetch location detail:", error);
-        setError("장소 정보를 불러오는데 실패했습니다.");
+        console.error("Error details:", error.message);
+        setError(`장소 정보를 불러오는데 실패했습니다. (${error.message})`);
       } finally {
         setLoading(false);
       }
@@ -44,6 +47,49 @@ const LocationDetailPage = () => {
     }
   }, [isAuthenticated, loadLikedPlaces]);
 
+  // 필드별 감정 분석 데이터 불러오기 (이미 로드된 location 데이터 활용)
+  const fetchSentimentFieldsData = async () => {
+    if (!location) return;
+
+    try {
+      setSentimentFieldsLoading(true);
+      setSentimentFieldsError(null);
+
+      // location 데이터에 aggregatedAnalysis가 있으면 사용, 없으면 API 호출
+      if (
+        location.aggregatedAnalysis &&
+        location.aggregatedAnalysis.sentimentAspects
+      ) {
+        setSentimentFieldsData(location);
+      } else {
+        const result = await locationService.fetchLocationSentimentFields(id);
+        if (result) {
+          setSentimentFieldsData(result);
+        } else {
+          setSentimentFieldsError(
+            "이 장소에는 필드별 감정 분석 데이터가 없습니다."
+          );
+        }
+      }
+    } catch (error) {
+      console.error("필드별 감정 분석 데이터 불러오기 실패:", error);
+      setSentimentFieldsError(
+        "필드별 감정 분석 데이터를 불러오는데 실패했습니다."
+      );
+    } finally {
+      setSentimentFieldsLoading(false);
+    }
+  };
+
+  // 분석 탭이 활성화될 때 필드별 감정 분석 데이터 불러오기
+  useEffect(() => {
+    if (activeTab === "analysis" && location) {
+      if (!sentimentFieldsData && !sentimentFieldsLoading) {
+        fetchSentimentFieldsData();
+      }
+    }
+  }, [activeTab, location, sentimentFieldsData, sentimentFieldsLoading]);
+
   const handleBackClick = () => {
     navigate(-1);
   };
@@ -52,21 +98,47 @@ const LocationDetailPage = () => {
     if (navigator.share) {
       navigator.share({
         title: location.title,
-        text: location.overview,
+        text: `${location.title} - 여행 정보`,
         url: window.location.href,
       });
     } else {
-      // 클립보드에 URL 복사
       navigator.clipboard.writeText(window.location.href);
       alert("링크가 클립보드에 복사되었습니다.");
     }
   };
 
+  // 홈페이지 URL에서 HTML 태그 제거하고 실제 URL 추출
+  const extractHomepageUrl = (homepageData) => {
+    if (!homepageData) return null;
+
+    // HTML 태그가 포함된 경우 href 속성에서 URL 추출
+    const hrefMatch = homepageData.match(/href=["']([^"']+)["']/);
+    if (hrefMatch) {
+      return hrefMatch[1];
+    }
+
+    // 일반 URL인 경우 그대로 반환
+    return homepageData;
+  };
+
+  // 홈페이지 표시용 텍스트 생성
+  const getHomepageDisplayText = (homepageData) => {
+    if (!homepageData) return null;
+
+    // HTML 태그가 포함된 경우 href 속성에서 URL 추출
+    const hrefMatch = homepageData.match(/href=["']([^"']+)["']/);
+    if (hrefMatch) {
+      return hrefMatch[1];
+    }
+
+    // 일반 URL인 경우 그대로 반환
+    return homepageData;
+  };
+
   if (loading) {
     return (
-      <div className="min-h-screen" style={{ backgroundColor: "#F5F5F5" }}>
-        <NavigationBar />
-        <main style={{ paddingTop: "5rem" }}>
+      <div className="min-h-screen" style={{ backgroundColor: "white" }}>
+        <main>
           <div className="container mx-auto px-4 py-8 max-w-4xl">
             <div className="location-detail-container">
               <div className="location-detail-loading">
@@ -82,9 +154,8 @@ const LocationDetailPage = () => {
 
   if (error || !location) {
     return (
-      <div className="min-h-screen" style={{ backgroundColor: "#F5F5F5" }}>
-        <NavigationBar />
-        <main style={{ paddingTop: "5rem" }}>
+      <div className="min-h-screen" style={{ backgroundColor: "white" }}>
+        <main>
           <div className="container mx-auto px-4 py-8 max-w-4xl">
             <div className="location-detail-container">
               <div className="location-detail-error">
@@ -113,7 +184,7 @@ const LocationDetailPage = () => {
                   onClick={handleBackClick}
                   className="location-detail-back-btn"
                 >
-                  이전 페이지로 돌아가기
+                  뒤로가기
                 </button>
               </div>
             </div>
@@ -124,23 +195,45 @@ const LocationDetailPage = () => {
   }
 
   return (
-    <div className="min-h-screen" style={{ backgroundColor: "#F5F5F5" }}>
-      <NavigationBar />
-
-      <main
-        style={{
-          paddingTop: "5rem",
-          paddingBottom: "5rem",
-        }}
-      >
+    <div className="min-h-screen" style={{ backgroundColor: "white" }}>
+      <main>
         <div className="container mx-auto px-4 py-8 max-w-full">
           <div className="location-detail-container">
-            {/* 장소 헤더 */}
-            <div className="location-detail-header">
-              {/* 장소 이름과 액션 버튼들 */}
-              <div className="location-detail-title-section">
-                <h1 className="location-detail-title">{location.title}</h1>
-                <div className="location-detail-title-actions">
+            {/* 뒤로가기, 제목, 액션 버튼들 */}
+            <div className="location-detail-title-section">
+              <div className="flex items-center mb-4">
+                {/* 왼쪽: 뒤로가기 버튼 */}
+                <div className="flex-shrink-0">
+                  <button
+                    onClick={handleBackClick}
+                    className="flex items-center gap-2 text-gray-600 hover:text-gray-800 transition-colors"
+                  >
+                    <svg
+                      className="w-5 h-5"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M15 19l-7-7 7-7"
+                      />
+                    </svg>
+                    뒤로가기
+                  </button>
+                </div>
+
+                {/* 가운데: 제목 */}
+                <div className="flex-1 flex justify-center">
+                  <h1 className="location-detail-title text-center">
+                    {location.title}
+                  </h1>
+                </div>
+
+                {/* 오른쪽: 액션 버튼들 */}
+                <div className="flex-shrink-0 location-detail-title-actions flex items-center gap-3">
                   <LikeButton
                     placeId={location._id}
                     placeName={location.title}
@@ -168,353 +261,133 @@ const LocationDetailPage = () => {
                   </button>
                 </div>
               </div>
+            </div>
 
-              {/* 주소 */}
-              {location.addr1 && (
-                <div className="location-detail-address">
-                  <svg
-                    className="w-5 h-5 text-gray-500"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"
-                    />
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"
-                    />
-                  </svg>
-                  <span>{location.addr1}</span>
-                </div>
-              )}
-
-              {/* 사진 (이미지가 있는 경우만 표시) */}
-              {location.firstimage && (
-                <div className="location-detail-image">
-                  <img
-                    src={location.firstimage}
-                    alt={location.title}
-                    className="w-full h-full object-cover"
+            {/* 주소 */}
+            {location.addr1 && (
+              <div className="location-detail-address">
+                <svg
+                  className="w-5 h-5 text-gray-500"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"
                   />
-                </div>
-              )}
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"
+                  />
+                </svg>
+                <span>{location.addr1}</span>
+              </div>
+            )}
 
-              {/* 카테고리 태그 */}
-              {(location.cat1 || location.cat2) && (
-                <div className="location-detail-tags">
-                  {location.cat1 && (
-                    <span className="location-detail-tag">{location.cat1}</span>
-                  )}
-                  {location.cat2 && (
-                    <span className="location-detail-tag">{location.cat2}</span>
-                  )}
-                </div>
-              )}
-            </div>
+            {/* 사진 (이미지가 있는 경우만 표시) */}
+            {location.firstimage && (
+              <div className="location-detail-image">
+                <img
+                  src={location.firstimage}
+                  alt={location.title}
+                  className="w-full h-full object-cover"
+                />
+              </div>
+            )}
 
-            {/* 탭 네비게이션 */}
-            <div className="location-detail-tabs">
-              <button
-                onClick={() => setActiveTab("overview")}
-                className={`location-detail-tab ${
-                  activeTab === "overview" ? "active" : ""
-                }`}
-              >
-                개요
-              </button>
-              <button
-                onClick={() => setActiveTab("analysis")}
-                className={`location-detail-tab ${
-                  activeTab === "analysis" ? "active" : ""
-                }`}
-              >
-                분석
-              </button>
-              <button
-                onClick={() => setActiveTab("reviews")}
-                className={`location-detail-tab ${
-                  activeTab === "reviews" ? "active" : ""
-                }`}
-              >
-                리뷰
-              </button>
-              <button
-                onClick={() => setActiveTab("info")}
-                className={`location-detail-tab ${
-                  activeTab === "info" ? "active" : ""
-                }`}
-              >
-                상세정보
-              </button>
-            </div>
+            {/* 카테고리 태그 */}
+            {(location.cat1 || location.cat2) && (
+              <div className="location-detail-tags">
+                {location.cat1 && (
+                  <span className="location-detail-tag">{location.cat1}</span>
+                )}
+                {location.cat2 && (
+                  <span className="location-detail-tag">{location.cat2}</span>
+                )}
+              </div>
+            )}
+          </div>
 
-            {/* 탭 콘텐츠 */}
-            <div className="location-detail-content">
-              {activeTab === "overview" && (
-                <div className="location-detail-overview">
-                  <h3 className="location-detail-content-title">장소 설명</h3>
-                  {location.overview ? (
-                    <p className="location-detail-overview-text">
-                      {location.overview}
-                    </p>
-                  ) : (
-                    <p className="location-detail-no-content">
-                      개요 정보가 없습니다.
-                    </p>
-                  )}
-                </div>
-              )}
+          {/* 탭 네비게이션 */}
+          <div className="location-detail-tabs">
+            <button
+              onClick={() => setActiveTab("overview")}
+              className={`location-detail-tab ${
+                activeTab === "overview" ? "active" : ""
+              }`}
+            >
+              개요
+            </button>
+            <button
+              onClick={() => setActiveTab("analysis")}
+              className={`location-detail-tab ${
+                activeTab === "analysis" ? "active" : ""
+              }`}
+            >
+              분석
+            </button>
+            <button
+              onClick={() => setActiveTab("reviews")}
+              className={`location-detail-tab ${
+                activeTab === "reviews" ? "active" : ""
+              }`}
+            >
+              리뷰
+            </button>
+            <button
+              onClick={() => setActiveTab("info")}
+              className={`location-detail-tab ${
+                activeTab === "info" ? "active" : ""
+              }`}
+            >
+              상세정보
+            </button>
+          </div>
 
-              {activeTab === "analysis" && (
-                <div className="location-detail-analysis-tab">
-                  <h3 className="location-detail-content-title">
-                    키워드별 감정 분석
-                  </h3>
-                  <div className="location-detail-keywords-container">
-                    {(() => {
-                      // 안전한 데이터 접근
-                      if (!location || !location.aggregatedAnalysis) {
-                        return (
-                          <div className="location-detail-no-keywords">
-                            <svg
-                              className="w-12 h-12 text-gray-400 mx-auto mb-4"
-                              fill="none"
-                              stroke="currentColor"
-                              viewBox="0 0 24 24"
-                            >
-                              <path
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                                strokeWidth={2}
-                                d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"
-                              />
-                            </svg>
-                            <p className="text-gray-500 text-center">
-                              분석 데이터를 불러오는 중입니다...
-                            </p>
-                          </div>
-                        );
-                      }
-
-                      // 실제 데이터 구조: location.aggregatedAnalysis.sentiments
-                      const sentiments =
-                        location.aggregatedAnalysis?.sentiments || {};
-
-                      // 키워드 ID와 이름 매핑
-                      const keywordNames = {
-                        "6835e145a853cdd2f586acc0": "시설관리",
-                        "6835e145a853cdd2f586acbe": "화장실",
-                        "6835e145a853cdd2f586acbf": "활동",
-                        "6835e145a853cdd2f586acbd": "주차",
-                        "6835e145a853cdd2f586acc1": "혼잡도",
-                        "6835e145a853cdd2f586acc2": "접근성",
-                        "6835e145a853cdd2f586acc3": "편의시설",
-                        "6835e145a853cdd2f586acc4": "가성비",
-                        "6835e145a853cdd2f586acc5": "아이 동반",
-                        "6835e145a853cdd2f586acc6": "노약자 동반",
-                        "6835e145a853cdd2f586acc7": "장소",
-                        "6835e145a853cdd2f586acc8": "교통편",
-                        "6835e145a853cdd2f586acc9": "청결/관리",
-                        "6835e145a853cdd2f586acca": "가격",
-                      };
-
-                      // sentiments 객체를 배열로 변환 (키워드 ID와 감정 데이터)
-                      const keywords = Object.entries(sentiments).map(
-                        ([keywordId, sentimentData]) => ({
-                          _id: keywordId,
-                          name:
-                            keywordNames[keywordId] ||
-                            `키워드_${keywordId.slice(-4)}`, // 실제 이름 또는 임시 이름
-                          sentiment: sentimentData,
-                        })
-                      );
-
-                      // 디버깅을 위한 콘솔 로그
-                      console.log("=== 분석 탭 디버깅 ===");
-                      console.log("Location 전체:", location);
-                      console.log(
-                        "AggregatedAnalysis:",
-                        location.aggregatedAnalysis
-                      );
-                      console.log("Sentiments:", sentiments);
-                      console.log("Sentiments keys:", Object.keys(sentiments));
-                      console.log("Keyword names mapping:", keywordNames);
-                      console.log("Keywords (변환된 배열):", keywords);
-                      console.log("Keywords length:", keywords?.length);
-                      console.log("Keywords isArray:", Array.isArray(keywords));
-
-                      // 각 키워드별 상세 정보 출력
-                      if (keywords && keywords.length > 0) {
-                        console.log("=== 각 키워드별 상세 정보 ===");
-                        keywords.forEach((keyword, idx) => {
-                          console.log(`키워드 ${idx}:`, {
-                            id: keyword._id,
-                            name: keyword.name,
-                            sentiment: keyword.sentiment,
-                            pos: keyword.sentiment?.pos || 0,
-                            neg: keyword.sentiment?.neg || 0,
-                            total:
-                              (keyword.sentiment?.pos || 0) +
-                              (keyword.sentiment?.neg || 0),
-                          });
-                        });
-                      }
-
-                      if (!keywords || keywords.length === 0) {
-                        return (
-                          <div className="location-detail-no-keywords">
-                            <p>키워드 분석 데이터가 없습니다.</p>
-                          </div>
-                        );
-                      }
-
-                      // 키워드를 총 감정 수로 정렬 (Flutter 코드와 동일)
-                      // keywords가 배열인지 확인하고 안전하게 처리
-                      const keywordsArray = Array.isArray(keywords)
-                        ? keywords
-                        : [];
-                      const sortedKeywords = keywordsArray
-                        .filter(
-                          (keyword) => keyword && typeof keyword === "object"
-                        )
-                        .sort((a, b) => {
-                          // pos + neg의 합으로 정렬 (중립 제외)
-                          const aPos = a.sentiment?.pos || 0;
-                          const aNeg = a.sentiment?.neg || 0;
-                          const aTotal = aPos + aNeg;
-
-                          const bPos = b.sentiment?.pos || 0;
-                          const bNeg = b.sentiment?.neg || 0;
-                          const bTotal = bPos + bNeg;
-
-                          return bTotal - aTotal;
-                        });
-
-                      console.log("정렬된 키워드 개수:", sortedKeywords.length);
-
-                      return sortedKeywords
-                        .map((keyword, index) => {
-                          // 안전한 키워드 데이터 접근
-                          if (!keyword || typeof keyword !== "object") {
-                            console.log(
-                              `키워드 ${index}: 유효하지 않은 데이터`,
-                              keyword
-                            );
-                            return null;
-                          }
-
-                          // Flutter 코드와 동일한 구조 사용
-                          const name = keyword.name || "알 수 없음";
-                          const sentiment = keyword.sentiment || {};
-                          const pos = sentiment.pos || 0;
-                          const neg = sentiment.neg || 0;
-                          const total = pos + neg; // pos + neg만 사용 (중립 제외)
-
-                          console.log(`=== 키워드 ${index}: ${name} ===`);
-                          console.log("원본 sentiment 데이터:", sentiment);
-                          console.log("추출된 값들:", { pos, neg });
-                          console.log("계산된 total:", total);
-                          console.log("계산된 비율:", {
-                            posPercent: ((pos / total) * 100).toFixed(1),
-                            negPercent: ((neg / total) * 100).toFixed(1),
-                          });
-
-                          if (total === 0) {
-                            console.log(
-                              `키워드 ${index}: 총합이 0이므로 제외`,
-                              name
-                            );
-                            return null;
-                          }
-
-                          const posPercent = ((pos / total) * 100).toFixed(1);
-                          const negPercent = ((neg / total) * 100).toFixed(1);
-
-                          return (
-                            <div
-                              key={keyword._id || index}
-                              className="location-detail-keyword-item"
-                            >
-                              <div className="location-detail-keyword-header">
-                                <h4 className="location-detail-keyword-name">
-                                  {name}
-                                </h4>
-                              </div>
-
-                              <div className="location-detail-keyword-analysis">
-                                <div className="location-detail-keyword-percentages">
-                                  <span className="location-detail-keyword-percentage negative">
-                                    부정 {negPercent}% ({neg}개)
-                                  </span>
-                                  <span className="location-detail-keyword-percentage positive">
-                                    긍정 {posPercent}% ({pos}개)
-                                  </span>
-                                </div>
-
-                                <div className="location-detail-keyword-bar">
-                                  <div
-                                    className="location-detail-keyword-segment negative"
-                                    style={{ width: `${negPercent}%` }}
-                                  ></div>
-                                  <div
-                                    className="location-detail-keyword-segment positive"
-                                    style={{ width: `${posPercent}%` }}
-                                  ></div>
-                                </div>
-                              </div>
-                            </div>
-                          );
-                        })
-                        .filter(Boolean);
-                    })()}
+          {/* 탭 콘텐츠 */}
+          <div className="location-detail-content">
+            {activeTab === "overview" && (
+              <div className="location-detail-overview">
+                {/* LLM 요약 섹션 */}
+                {location.llmoverview && (
+                  <div className="llm-overview-section">
+                    <div className="llm-overview-header">
+                      <h3 className="location-detail-content-title">
+                        <span className="llm-icon">🤖</span>
+                        AI 요약
+                      </h3>
+                      <div className="llm-badge">LLM</div>
+                    </div>
+                    <div className="llm-overview-content">
+                      <p className="llm-overview-text">
+                        {location.llmoverview}
+                      </p>
+                    </div>
                   </div>
-                </div>
-              )}
+                )}
+              </div>
+            )}
 
-              {activeTab === "info" && (
-                <div className="location-detail-info-tab">
-                  <h3 className="location-detail-content-title">상세정보</h3>
-                  <div className="location-detail-info-grid">
-                    {location.addr1 && (
-                      <div className="location-detail-info-item">
-                        <span className="location-detail-info-label">주소</span>
-                        <span className="location-detail-info-value">
-                          {location.addr1}
-                        </span>
-                      </div>
-                    )}
-                    {location.cat1 && (
-                      <div className="location-detail-info-item">
-                        <span className="location-detail-info-label">
-                          카테고리
-                        </span>
-                        <span className="location-detail-info-value">
-                          {location.cat1}
-                        </span>
-                      </div>
-                    )}
-                    {location.cat2 && (
-                      <div className="location-detail-info-item">
-                        <span className="location-detail-info-label">
-                          세부 카테고리
-                        </span>
-                        <span className="location-detail-info-value">
-                          {location.cat2}
-                        </span>
-                      </div>
-                    )}
-                    {location.tel && (
-                      <div className="location-detail-info-item">
-                        <span className="location-detail-info-label">
+            {activeTab === "analysis" && (
+              <div className="location-detail-analysis-tab">
+                {/* 필드별 감정 분석 섹션 */}
+                <div className="mt-8">
+                  <h3 className="location-detail-content-title mb-6">
+                    필드별 감정 분석
+                  </h3>
+
+                  {(() => {
+                    // 로딩 중
+                    if (sentimentFieldsLoading) {
+                      return (
+                        <div className="location-detail-no-keywords">
                           <svg
-                            className="w-4 h-4 inline mr-1"
+                            className="w-12 h-12 text-gray-400 mx-auto mb-4 animate-spin"
                             fill="none"
                             stroke="currentColor"
                             viewBox="0 0 24 24"
@@ -523,71 +396,255 @@ const LocationDetailPage = () => {
                               strokeLinecap="round"
                               strokeLinejoin="round"
                               strokeWidth={2}
-                              d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"
+                              d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
                             />
                           </svg>
-                          전화번호
-                        </span>
-                        <span className="location-detail-info-value">
-                          <a
-                            href={`tel:${location.tel}`}
-                            className="location-detail-info-link"
+                          <p className="text-gray-500 text-center">
+                            필드별 감정 분석 데이터를 불러오는 중입니다...
+                          </p>
+                        </div>
+                      );
+                    }
+
+                    // 에러 발생
+                    if (sentimentFieldsError) {
+                      return (
+                        <div className="location-detail-no-keywords">
+                          <svg
+                            className="w-12 h-12 text-red-400 mx-auto mb-4"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
                           >
-                            {location.tel}
-                          </a>
-                        </span>
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                            />
+                          </svg>
+                          <p className="text-red-500 text-center mb-4">
+                            {sentimentFieldsError}
+                          </p>
+                          <button
+                            onClick={fetchSentimentFieldsData}
+                            className="bg-green-500 text-white px-4 py-2 rounded-lg hover:bg-green-600 transition-colors"
+                          >
+                            다시 시도
+                          </button>
+                        </div>
+                      );
+                    }
+
+                    // 데이터 없음
+                    if (
+                      !sentimentFieldsData ||
+                      !sentimentFieldsData.aggregatedAnalysis ||
+                      !sentimentFieldsData.aggregatedAnalysis.sentimentAspects
+                    ) {
+                      return (
+                        <div className="location-detail-no-keywords">
+                          <svg
+                            className="w-12 h-12 text-gray-400 mx-auto mb-4"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"
+                            />
+                          </svg>
+                          <p className="text-gray-500 text-center">
+                            필드별 감정 분석 데이터가 없습니다.
+                          </p>
+                        </div>
+                      );
+                    }
+
+                    const sentimentAspects =
+                      sentimentFieldsData.aggregatedAnalysis.sentimentAspects;
+                    const fields = Object.keys(sentimentAspects);
+
+                    return (
+                      <div className="location-detail-fields-grid">
+                        {fields.map((field, index) => {
+                          const fieldData = sentimentAspects[field];
+                          const positive = fieldData.pos || 0;
+                          const negative = fieldData.neg || 0;
+                          const neutral = fieldData.none || 0;
+                          const total = positive + negative + neutral;
+
+                          const positivePercentage =
+                            total > 0 ? (positive / total) * 100 : 0;
+                          const negativePercentage =
+                            total > 0 ? (negative / total) * 100 : 0;
+                          const neutralPercentage =
+                            total > 0 ? (neutral / total) * 100 : 0;
+
+                          return (
+                            <div
+                              key={index}
+                              className="location-detail-field-card"
+                            >
+                              <div className="location-detail-field-header">
+                                <h4 className="location-detail-field-title">
+                                  {field}
+                                </h4>
+                              </div>
+
+                              <div className="location-detail-field-stats">
+                                <div className="location-detail-field-stat">
+                                  <div className="location-detail-field-stat-header">
+                                    <span className="location-detail-field-stat-label positive">
+                                      긍정
+                                    </span>
+                                    <span className="location-detail-field-stat-count">
+                                      {positivePercentage.toFixed(1)}%
+                                    </span>
+                                  </div>
+                                  <div className="location-detail-field-progress">
+                                    <div
+                                      className="location-detail-field-progress-bar positive"
+                                      style={{
+                                        width: `${positivePercentage}%`,
+                                      }}
+                                    ></div>
+                                  </div>
+                                </div>
+
+                                <div className="location-detail-field-stat">
+                                  <div className="location-detail-field-stat-header">
+                                    <span className="location-detail-field-stat-label neutral">
+                                      중립
+                                    </span>
+                                    <span className="location-detail-field-stat-count">
+                                      {neutralPercentage.toFixed(1)}%
+                                    </span>
+                                  </div>
+                                  <div className="location-detail-field-progress">
+                                    <div
+                                      className="location-detail-field-progress-bar neutral"
+                                      style={{ width: `${neutralPercentage}%` }}
+                                    ></div>
+                                  </div>
+                                </div>
+
+                                <div className="location-detail-field-stat">
+                                  <div className="location-detail-field-stat-header">
+                                    <span className="location-detail-field-stat-label negative">
+                                      부정
+                                    </span>
+                                    <span className="location-detail-field-stat-count">
+                                      {negativePercentage.toFixed(1)}%
+                                    </span>
+                                  </div>
+                                  <div className="location-detail-field-progress">
+                                    <div
+                                      className="location-detail-field-progress-bar negative"
+                                      style={{
+                                        width: `${negativePercentage}%`,
+                                      }}
+                                    ></div>
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    );
+                  })()}
+                </div>
+              </div>
+            )}
+
+            {activeTab === "reviews" && (
+              <div className="location-detail-reviews-tab">
+                <ReviewSection
+                  locationId={location._id}
+                  locationName={location.title}
+                />
+              </div>
+            )}
+
+            {activeTab === "info" && (
+              <div className="location-detail-info-tab">
+                {/* 장소 설명 섹션 */}
+                <div className="location-description-section">
+                  <h3 className="location-detail-content-title">장소 설명</h3>
+                  {location.overview ? (
+                    <div className="location-description-content">
+                      <p className="location-description-text">
+                        {location.overview}
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="location-description-content">
+                      <p className="location-detail-no-content">
+                        장소 설명이 없습니다.
+                      </p>
+                    </div>
+                  )}
+                </div>
+
+                {/* 기본 정보 섹션 */}
+                <div className="location-basic-info-section">
+                  <h3 className="location-detail-content-title">기본 정보</h3>
+                  <div className="location-detail-info-grid">
+                    {location.addr1 && (
+                      <div className="location-detail-info-item">
+                        <h4 className="location-detail-info-label">주소</h4>
+                        <p className="location-detail-info-value">
+                          {location.addr1}
+                        </p>
+                      </div>
+                    )}
+                    {location.cat1 && (
+                      <div className="location-detail-info-item">
+                        <h4 className="location-detail-info-label">카테고리</h4>
+                        <p className="location-detail-info-value">
+                          {location.cat1}
+                        </p>
+                      </div>
+                    )}
+                    {location.cat2 && (
+                      <div className="location-detail-info-item">
+                        <h4 className="location-detail-info-label">
+                          세부 카테고리
+                        </h4>
+                        <p className="location-detail-info-value">
+                          {location.cat2}
+                        </p>
+                      </div>
+                    )}
+                    {location.tel && (
+                      <div className="location-detail-info-item">
+                        <h4 className="location-detail-info-label">전화번호</h4>
+                        <p className="location-detail-info-value">
+                          {location.tel}
+                        </p>
                       </div>
                     )}
                     {location.homepage && (
                       <div className="location-detail-info-item">
-                        <span className="location-detail-info-label">
-                          홈페이지
-                        </span>
-                        <span className="location-detail-info-value">
-                          <a
-                            href={(() => {
-                              // HTML 태그에서 URL 추출
-                              const match =
-                                location.homepage.match(/href="([^"]*)"/);
-                              return match ? match[1] : location.homepage;
-                            })()}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="location-detail-info-link"
-                          >
-                            {(() => {
-                              // HTML 태그에서 URL 추출하여 표시
-                              const match =
-                                location.homepage.match(/href="([^"]*)"/);
-                              if (match) {
-                                const url = match[1];
-                                // URL에서 도메인 부분만 표시
-                                try {
-                                  const urlObj = new URL(url);
-                                  return urlObj.hostname;
-                                } catch {
-                                  return url;
-                                }
-                              }
-                              return location.homepage;
-                            })()}
-                          </a>
-                        </span>
+                        <h4 className="location-detail-info-label">홈페이지</h4>
+                        <a
+                          href={extractHomepageUrl(location.homepage)}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="location-detail-info-link"
+                        >
+                          {getHomepageDisplayText(location.homepage)}
+                        </a>
                       </div>
                     )}
                   </div>
                 </div>
-              )}
-
-              {activeTab === "reviews" && (
-                <div className="location-detail-reviews-tab">
-                  <ReviewSection
-                    locationId={location._id}
-                    locationName={location.title}
-                  />
-                </div>
-              )}
-            </div>
+              </div>
+            )}
           </div>
         </div>
       </main>

@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
-import NavigationBar from "../widgets/NavigationBar";
 import useAuthStore from "../stores/authStore";
 
 const LoginPage = () => {
@@ -41,10 +40,8 @@ const LoginPage = () => {
   };
 
   return (
-    <div className="min-h-screen" style={{ backgroundColor: "#F5F5F5" }}>
-      <NavigationBar />
-
-      <main style={{ paddingTop: "4rem" }}>
+    <div className="min-h-screen" style={{ backgroundColor: "white" }}>
+      <main>
         <div className="auth-container">
           <div className="auth-card">
             {/* 헤더 */}

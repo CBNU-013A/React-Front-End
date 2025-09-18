@@ -21,14 +21,15 @@ class LikeService {
   }
 
   // 좋아요 추가
-  async addUserLike(userId, placeId) {
+  async addUserLike(userId, placeId, token) {
     try {
       const url = `${this.baseUrl}/api/users/${userId}/likes`;
-      console.log("좋아요 추가 API 호출:", { url, placeId });
+      console.log("좋아요 추가 API 호출:", { url, placeId, hasToken: !!token });
       const response = await fetch(url, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
+          ...(token && { Authorization: `Bearer ${token}` }),
         },
         body: JSON.stringify({ locationId: placeId }),
       });
@@ -36,7 +37,7 @@ class LikeService {
         status: response.status,
         statusText: response.statusText,
       });
-      return response.status === 200;
+      return response.status === 200 || response.status === 201;
     } catch (error) {
       console.error("좋아요 추가 실패:", error);
       return false;
@@ -44,14 +45,15 @@ class LikeService {
   }
 
   // 좋아요 제거
-  async removeUserLike(userId, placeId) {
+  async removeUserLike(userId, placeId, token) {
     try {
       const url = `${this.baseUrl}/api/users/${userId}/likes`;
-      console.log("좋아요 제거 API 호출:", { url, placeId });
+      console.log("좋아요 제거 API 호출:", { url, placeId, hasToken: !!token });
       const response = await fetch(url, {
         method: "DELETE",
         headers: {
           "Content-Type": "application/json",
+          ...(token && { Authorization: `Bearer ${token}` }),
         },
         body: JSON.stringify({ locationId: placeId }),
       });
@@ -59,7 +61,7 @@ class LikeService {
         status: response.status,
         statusText: response.statusText,
       });
-      return response.status === 200;
+      return response.status === 200 || response.status === 204;
     } catch (error) {
       console.error("좋아요 제거 실패:", error);
       return false;
@@ -69,10 +71,16 @@ class LikeService {
   // 좋아요 토글
   async toggleLike(userId, placeId, token, isLiked) {
     try {
+      console.log("toggleLike 호출:", {
+        userId,
+        placeId,
+        isLiked,
+        hasToken: !!token,
+      });
       if (isLiked) {
-        return await this.removeUserLike(userId, placeId);
+        return await this.removeUserLike(userId, placeId, token);
       } else {
-        return await this.addUserLike(userId, placeId);
+        return await this.addUserLike(userId, placeId, token);
       }
     } catch (error) {
       console.error("좋아요 토글 실패:", error);
@@ -84,8 +92,13 @@ class LikeService {
   async loadUserLikePlaces(userId, token) {
     try {
       const url = `${this.baseUrl}/api/users/${userId}/likes`;
-      console.log("좋아요 목록 API 호출:", { url, userId });
-      const response = await fetch(url);
+      console.log("좋아요 목록 API 호출:", { url, userId, hasToken: !!token });
+      const response = await fetch(url, {
+        headers: {
+          ...(token && { Authorization: `Bearer ${token}` }),
+          "Content-Type": "application/json",
+        },
+      });
       console.log("좋아요 목록 API 응답:", {
         status: response.status,
         statusText: response.statusText,
@@ -94,11 +107,20 @@ class LikeService {
       if (response.status === 200) {
         const data = await response.json();
         console.log("좋아요 목록 데이터:", data);
-        return data.likes || [];
+        // 백엔드에서 ObjectId 배열을 반환하는 경우 처리
+        return data.likes || data || [];
       }
       return [];
     } catch (error) {
       console.error("좋아요 목록 로드 실패:", error);
+      // 네트워크 에러나 서버 연결 실패인 경우 에러를 다시 던짐
+      if (
+        error.message.includes("Failed to fetch") ||
+        error.message.includes("NetworkError") ||
+        error.message.includes("fetch")
+      ) {
+        throw error;
+      }
       return [];
     }
   }
@@ -135,21 +157,19 @@ class LikeService {
     }
   }
 
-  // 장소의 좋아요 개수 가져오기
-  async getLocationLikeCount(placeName, token) {
+  // 장소의 좋아요 개수 가져오기 (placeId 기반)
+  async getLocationLikeCount(placeId, token) {
     try {
-      // 한글 장소명을 URL 인코딩
-      const encodedPlaceName = encodeURIComponent(placeName);
-      const url = `${this.baseUrl}/api/location/${encodedPlaceName}/likes`;
+      const url = `${this.baseUrl}/api/location/${placeId}/likes`;
       console.log("좋아요 개수 API 호출:", {
         url,
-        placeName,
-        encodedPlaceName,
+        placeId,
+        hasToken: !!token,
       });
 
       const response = await fetch(url, {
         headers: {
-          Authorization: `Bearer ${token}`,
+          ...(token && { Authorization: `Bearer ${token}` }),
           "Content-Type": "application/json",
         },
       });
@@ -161,7 +181,7 @@ class LikeService {
 
       if (response.status === 200) {
         const data = await response.json();
-        return data.likeCount || 0;
+        return data.likes || 0;
       } else {
         console.warn(
           `좋아요 개수 조회 실패: ${response.status} ${response.statusText}`

@@ -18,6 +18,11 @@ class LocationService {
     }
   }
 
+  // 모든 장소 조회 (별칭)
+  async getAllLocations() {
+    return this.fetchAllLocations();
+  }
+
   // 특정 장소 조회
   async fetchLocation(placeId) {
     if (!placeId || placeId.trim() === "") {
@@ -25,17 +30,32 @@ class LocationService {
     }
 
     try {
+      // 백엔드 API 경로: /api/location/id/:placeID
       const response = await fetch(`${baseUrl}/api/location/id/${placeId}`);
+      console.log("API 요청 URL:", `${baseUrl}/api/location/id/${placeId}`);
+
+      console.log("응답 상태:", response.status);
 
       if (response.ok) {
         const data = await response.json();
+        console.log("장소 데이터:", data);
         return data;
       } else {
+        const errorText = await response.text();
+        console.error("API 응답 오류:", errorText);
         throw new Error(`Failed to load location data: ${response.status}`);
       }
     } catch (error) {
       console.error("Error fetching location:", error);
-      throw error;
+      // 네트워크 에러나 서버 연결 실패인 경우 원본 에러를 유지
+      if (
+        error.message.includes("Failed to fetch") ||
+        error.message.includes("NetworkError") ||
+        error.message.includes("fetch")
+      ) {
+        throw error;
+      }
+      throw new Error(`Failed to load location data: ${error.message}`);
     }
   }
 
@@ -262,6 +282,127 @@ class RecentSearchService {
     } catch (error) {
       console.error("Error clearing localStorage:", error);
       return false;
+    }
+  }
+
+  // 장소의 필드와 분석 데이터 가져오기
+  async fetchLocationAnalysis(placeId) {
+    if (!placeId || placeId.trim() === "") {
+      throw new Error("placeId is empty");
+    }
+
+    try {
+      console.log("=== 장소 분석 데이터 가져오기 시작 ===");
+      console.log("장소 ID:", placeId);
+
+      const response = await fetch(
+        `${baseUrl}/api/location/${placeId}/analysis`
+      );
+
+      if (response.ok) {
+        const data = await response.json();
+        console.log("장소 분석 데이터:", data);
+        return data;
+      } else {
+        throw new Error(`Failed to load location analysis: ${response.status}`);
+      }
+    } catch (error) {
+      console.error("Error fetching location analysis:", error);
+      // 네트워크 에러나 서버 연결 실패인 경우 원본 에러를 유지
+      if (
+        error.message.includes("Failed to fetch") ||
+        error.message.includes("NetworkError") ||
+        error.message.includes("fetch")
+      ) {
+        throw error;
+      }
+      throw new Error("장소 분석 데이터를 불러오는데 실패했습니다.");
+    }
+  }
+
+  // 장소의 필드별 감정 분석 데이터 가져오기
+  async fetchLocationSentimentFields(placeId) {
+    if (!placeId || placeId.trim() === "") {
+      throw new Error("placeId is empty");
+    }
+
+    try {
+      console.log("=== 장소 필드별 감정 분석 데이터 가져오기 시작 ===");
+      console.log("장소 ID:", placeId);
+
+      // 백엔드의 getLocationByPlaceID API 사용
+      const response = await fetch(
+        `${baseUrl}/api/location/placeID/${placeId}`
+      );
+
+      if (response.ok) {
+        const data = await response.json();
+        console.log("장소 데이터 (필드별 감정 분석 포함):", data);
+
+        // aggregatedAnalysis 필드가 있는지 확인
+        if (
+          data.aggregatedAnalysis &&
+          data.aggregatedAnalysis.sentimentAspects
+        ) {
+          return data;
+        } else {
+          console.warn(
+            "장소 데이터에 aggregatedAnalysis.sentimentAspects가 없습니다."
+          );
+          return null;
+        }
+      } else {
+        throw new Error(`Failed to load location data: ${response.status}`);
+      }
+    } catch (error) {
+      console.error("Error fetching location sentiment fields:", error);
+      // 네트워크 에러나 서버 연결 실패인 경우 원본 에러를 유지
+      if (
+        error.message.includes("Failed to fetch") ||
+        error.message.includes("NetworkError") ||
+        error.message.includes("fetch")
+      ) {
+        throw error;
+      }
+      throw new Error(
+        "장소 필드별 감정 분석 데이터를 불러오는데 실패했습니다."
+      );
+    }
+  }
+
+  // 장소 이름으로 장소 데이터 가져오기 (백엔드 getLocationByPlaceName API 활용)
+  async fetchLocationByPlaceName(placeName) {
+    if (!placeName || placeName.trim() === "") {
+      throw new Error("placeName is empty");
+    }
+
+    try {
+      console.log("=== 장소 이름으로 데이터 가져오기 시작 ===");
+      console.log("장소 이름:", placeName);
+
+      // 백엔드의 getLocationByPlaceName API 사용
+      const response = await fetch(
+        `${baseUrl}/api/location/placeName/${encodeURIComponent(placeName)}`
+      );
+
+      if (response.ok) {
+        const data = await response.json();
+        console.log("장소 데이터 (이름으로 조회):", data);
+        return data;
+      } else {
+        throw new Error(`Failed to load location by name: ${response.status}`);
+      }
+    } catch (error) {
+      console.error("Error fetching location by name:", error);
+      // 네트워크 에러나 서버 연결 실패인 경우 원본 에러를 유지
+      if (
+        error.message.includes("Failed to fetch") ||
+        error.message.includes("NetworkError") ||
+        error.message.includes("fetch")
+      ) {
+        throw error;
+      }
+      throw new Error("장소 데이터를 불러오는데 실패했습니다.");
     }
   }
 }

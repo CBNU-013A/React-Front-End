@@ -39,10 +39,23 @@ const useLikeStore = create(
           set({ likedPlaces, loading: false });
         } catch (error) {
           console.error("좋아요 목록 로드 실패:", error);
-          set({
-            error: "좋아요 목록을 불러오는데 실패했습니다.",
-            loading: false,
-          });
+          // 네트워크 에러나 서버 연결 실패인 경우
+          if (
+            error.message.includes("Failed to fetch") ||
+            error.message.includes("NetworkError") ||
+            error.message.includes("fetch")
+          ) {
+            set({
+              error:
+                "서버에 연결할 수 없습니다. 백엔드 서버가 실행 중인지 확인해주세요.",
+              loading: false,
+            });
+          } else {
+            set({
+              error: "좋아요 목록을 불러오는데 실패했습니다.",
+              loading: false,
+            });
+          }
         }
       },
 
@@ -74,6 +87,7 @@ const useLikeStore = create(
             isLiked,
             currentLikedPlaces: likedPlaces,
             userId: user.userId,
+            token: token ? "있음" : "없음",
           });
 
           const success = await likeService.toggleLike(
@@ -82,6 +96,8 @@ const useLikeStore = create(
             token,
             isLiked
           );
+
+          console.log("API 토글 결과:", success);
 
           if (success) {
             let newLikedPlaces;
@@ -92,20 +108,21 @@ const useLikeStore = create(
               // 좋아요 제거
               newLikedPlaces = likedPlaces.filter(
                 (place) => place._id !== placeId
-              );
-              // 좋아요 개수 감소
+              ); // 좋아요 개수 감소 (즉시 반영)
               if (newLikeCounts[placeId] && newLikeCounts[placeId] > 0) {
                 newLikeCounts[placeId] = newLikeCounts[placeId] - 1;
+              } else {
+                newLikeCounts[placeId] = 0;
               }
-              console.log("좋아요 제거 완료");
+              console.log("좋아요 제거 완료, 개수:", newLikeCounts[placeId]);
             } else {
               // 좋아요 추가 - 실제 장소 정보는 별도로 가져와야 함
               // 여기서는 placeId만 저장하고, 실제 정보는 즐겨찾기 페이지에서 로드
               const newPlace = { _id: placeId };
               newLikedPlaces = [...likedPlaces, newPlace];
-              // 좋아요 개수 증가
+              // 좋아요 개수 증가 (즉시 반영)
               newLikeCounts[placeId] = (newLikeCounts[placeId] || 0) + 1;
-              console.log("좋아요 추가 완료");
+              console.log("좋아요 추가 완료, 개수:", newLikeCounts[placeId]);
             }
 
             console.log("좋아요 목록 업데이트:", {
@@ -130,27 +147,22 @@ const useLikeStore = create(
       },
 
       // 장소별 좋아요 개수 가져오기
-      getLikeCount: async (placeName, placeId) => {
+      getLikeCount: async (placeId) => {
         const { token } = useAuthStore.getState();
-        if (!token) return 0;
+        if (!placeId) return 0;
 
         try {
-          console.log("좋아요 개수 조회 시도:", placeName);
-          const count = await likeService.getLocationLikeCount(
-            placeName,
-            token
-          );
+          console.log("좋아요 개수 조회 시도:", placeId);
+          const count = await likeService.getLocationLikeCount(placeId, token);
 
           // 스토어에 개수 저장
-          if (placeId) {
-            const { likeCounts } = get();
-            set({
-              likeCounts: {
-                ...likeCounts,
-                [placeId]: count,
-              },
-            });
-          }
+          const { likeCounts } = get();
+          set({
+            likeCounts: {
+              ...likeCounts,
+              [placeId]: count,
+            },
+          });
 
           return count;
         } catch (error) {
