@@ -1,4 +1,4 @@
-const API_BASE_URL = "http://localhost:8001";
+const API_BASE_URL = "/api";
 
 class RecommendationService {
   // 서버 연결 테스트 (실제 API 엔드포인트 사용)

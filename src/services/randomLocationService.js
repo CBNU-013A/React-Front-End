@@ -1,4 +1,4 @@
-const BASE_URL = "http://localhost:8001";
+const BASE_URL = "/api";
 
 /**
  * API 응답 데이터 검증 및 정리

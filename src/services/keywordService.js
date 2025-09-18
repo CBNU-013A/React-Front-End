@@ -1,4 +1,4 @@
-const API_BASE_URL = "http://localhost:8001";
+const API_BASE_URL = "/api";
 
 class KeywordService {
   // 대분류 키워드 조회

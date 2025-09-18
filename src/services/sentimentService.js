@@ -1,4 +1,4 @@
-const API_BASE_URL = "http://localhost:8001";
+const API_BASE_URL = "/api";
 
 class SentimentService {
   // 리뷰 감성 분석 (서버의 analyzeReview 엔드포인트 사용)
