@@ -1,5 +1,5 @@
 // LocationService - Flutter LocationService와 동일한 기능
-const baseUrl = "http://localhost:8001";
+const baseUrl = "";
 
 class LocationService {
   // 모든 장소 조회

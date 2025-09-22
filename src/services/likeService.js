@@ -1,5 +1,5 @@
 // LikeService - Flutter LikeService 기반
-const baseUrl = "http://localhost:8001";
+const baseUrl = "";
 
 class LikeService {
   constructor() {
