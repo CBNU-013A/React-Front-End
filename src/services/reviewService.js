@@ -1,6 +1,6 @@
 import { getConvenienceKeywordName } from "../constants/convenienceKeywords";
 
-const API_BASE_URL = "/api";
+const API_BASE_URL = "";
 
 class ReviewService {
   // 장소별 리뷰 조회

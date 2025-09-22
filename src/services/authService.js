@@ -1,4 +1,4 @@
-const BASE_URL = "/api";
+const BASE_URL = "";
 
 /**
  * 인증 서비스

@@ -1,4 +1,4 @@
-const BASE_URL = "/api";
+const BASE_URL = "";
 
 /**
  * API 응답 데이터 검증 및 정리
